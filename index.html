@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no">
+  <script src="./js/comm-js-css.js"></script>
+  <style>
+    .avatar-uploader {
+      width: 100%;
+    }
+
+    .avatar-uploader .el-upload {
+      border: 1px dashed #d9d9d9;
+      border-radius: 6px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .avatar-uploader .el-upload:hover {
+      border-color: #409EFF;
+    }
+
+    .avatar-uploader-icon {
+      font-size: 28px;
+      color: #8c939d;
+      width: 178px;
+      height: 178px;
+      line-height: 178px;
+      text-align: center;
+    }
+
+    .avatar {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <el-upload class="avatar-uploader" action="https://jsonplaceholder.typicode.com/posts/" :show-file-list="false" :on-success="handleAvatarSuccess">
+      <img v-if="imageUrl" :src="imageUrl" class="avatar">
+      <i v-else class="el-icon-plus avatar-uploader-icon"></i>
+    </el-upload>
+    <input type="file" @change="cameraChange" name="fileImg" accept="image/*" capture="camera" hidden>
+    <el-button @click="useCamera" style="width: 100%; margin-top: 15px">打开相机</el-button>
+    <el-button @click="start" style="width: 100%; margin-top: 15px;margin-left:0px;">开始评分</el-button>
+    <div>
+      <span>您的年龄是：</span><span>{{age}}</span>
+    </div>
+    <div>
+      <span>颜值得分：</span><span>{{soccor}}</span>
+    </div>
+    <script>
+      var el = new Vue({
+        el: '#app',
+        data: function () {
+          return {
+            imageUrl: '',
+            base64IMG: '',
+            age: 0,
+            soccor: 0
+          }
+        },
+        methods: {
+          useCamera() {
+            $('[name="fileImg"]').click();
+          },
+          start() {
+            if (!this.imageUrl) alert("未监测到人脸！");
+            this.convertImgToBase64(this.imageUrl, function(base64Img){
+              el.getsoccer(base64Img)
+            });
+          },
+          cameraChange() {
+            var file = $('[name="fileImg"]')[0].files[0];
+            r = new FileReader();  //本地预览
+            r.onload = function(){
+              el.imageUrl = r.result;
+              el.getsoccer(el.imageUrl.substring(el.imageUrl.indexOf(",") + 1, el.imageUrl.length));
+            }
+            r.readAsDataURL(file);    //Base64
+          },
+          getsoccer(base64Img) {
+            $.ajax({
+              url: 'https://aip.baidubce.com/rest/2.0/face/v3/detect?access_token=24.f3f23b34c645a4e706d99dfd5fd906eb.2592000.1545531844.282335-14916193',
+              method: "post",
+              contentType: 'application/x-www-form-urlencoded',
+              data: {
+                "image_type": "BASE64",
+                "face_field": 'age,beauty',
+                "image": base64Img,
+              },
+              success: function (r) {
+                if(r.error_msg == "SUCCESS"){
+                  el.age = r.result.face_list[0].age
+                  el.soccor = r.result.face_list[0].beauty
+                }else{
+                  alert("颜值爆表!");
+                }
+              },
+              error: function () {
+                alert("error");
+              }
+            });
+          },
+          handleAvatarSuccess(res, file) {
+            this.imageUrl = URL.createObjectURL(file.raw);
+
+          },
+          convertImgToBase64(url, callback, outputFormat) {
+            var canvas = document.createElement('CANVAS'),
+              ctx = canvas.getContext('2d'),
+              img = new Image;
+            img.crossOrigin = 'Anonymous';
+            img.onload = function () {
+              canvas.height = img.height;
+              canvas.width = img.width;
+              ctx.drawImage(img, 0, 0);
+              var dataURL = canvas.toDataURL(outputFormat)
+              dataURL = dataURL.substring(dataURL.indexOf(",") + 1, dataURL.length);
+              callback.call(this, dataURL);
+              canvas = null;
+            };
+            img.src = url;
+          }
+        }
+      })
+    </script>
+</body>
+
+</html>
